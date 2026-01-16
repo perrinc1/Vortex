@@ -1,11 +1,12 @@
-// Remplace toute la partie <script> par celle-ci :
 <script>
     const client = new Appwrite.Client()
-        .setEndpoint('https://cloud.appwrite.io/v1')
-        .setProject('alexandrelevet1971'); // Ton ID Projet corrigé
+        // Utilise bien le serveur "fra" comme indiqué dans tes réglages
+        .setEndpoint('https://fra.cloud.appwrite.io/v1') 
+        .setProject('alexandrelevet1971'); 
 
     const storage = new Appwrite.Storage(client);
-    const BUCKET_ID = 'alexandrelevet1971'; // Ton ID Bucket corrigé
+    // Utilise ton nouveau Bucket
+    const BUCKET_ID = 'alexandrelevet1972'; 
 
     async function uploadGame() {
         const file = document.getElementById('fileInput').files[0];
@@ -36,6 +37,7 @@
             `).join('');
         } catch (e) {
             list.innerText = "Erreur de chargement des jeux.";
+            console.error(e);
         }
     }
     loadGames();
