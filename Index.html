@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ma Plateforme de Jeux</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        body { font-family: sans-serif; background: #121212; color: white; text-align: center; padding: 20px; }
+        .box { background: #1e1e1e; border-radius: 10px; padding: 20px; border: 1px solid #333; margin-bottom: 20px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        .game-item { display: flex; justify-content: space-between; background: #2a2a2a; margin: 5px; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🕹️ Hébergeur de Jeux Web</h1>
+
+    <div class="box">
+        <h3>Partager un jeu (.zip)</h3>
+        <input type="file" id="fileInput" accept=".zip">
+        <button onclick="envoyerJeu()">Mettre en ligne</button>
+        <p id="msg"></p>
+    </div>
+
+    <div class="box">
+        <h3>Jeux disponibles</h3>
+        <div id="listeJeux">Chargement...</div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        const client = new Appwrite.Client()
+            .setEndpoint('https://cloud.appwrite.io/v1')
+            .setProject('alexandrelevet1971'); // <--- TON ID ICI
+
+        const storage = new Appwrite.Storage(client);
+        const BUCKET_ID = 'alexandrelevet1971'; // <--- TON ID ICI
+
+        // --- ENVOYER UN JEU ---
+        async function envoyerJeu() {
+            const file = document.getElementById('fileInput').files[0];
+            if(!file) return alert("Choisis un fichier !");
+            
+            document.getElementById('msg').innerText = "Envoi en cours...";
+            try {
+                await storage.createFile(BUCKET_ID, Appwrite.ID.unique(), file);
+                document.getElementById('msg').innerText = "Terminé !";
+                chargerListe();
+            } catch(e) { alert("Erreur: " + e.message); }
+        }
+
+        // --- AFFICHER LES JEUX ---
+        async function chargerListe() {
+            const div = document.getElementById('listeJeux');
+            try {
+                const data = await storage.listFiles(BUCKET_ID);
+                div.innerHTML = data.files.map(f => `
+                    <div class="game-item">
+                        <span>${f.name}</span>
+                        <a href="${storage.getFileView(BUCKET_ID, f.$id)}" target="_blank">
+                            <button style="background:green">Jouer / Télécharger</button>
+                        </a>
+                    </div>
+                `).join('');
+            } catch(e) { div.innerText = "Erreur de chargement"; }
+        }
+        chargerListe();
+    </script>
+</body>
+</html>
