@@ -3,34 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vortex Arcade v2</title>
+    <title>Vortex Arcade Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0f0f1b; color: white; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: auto; background: #1a1a2e; padding: 30px; border-radius: 15px; border: 1px solid #0f3460; }
-        h1 { color: #e94560; text-transform: uppercase; letter-spacing: 2px; }
-        .game-card { background: #16213e; margin: 15px 0; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .btn { border: none; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
-        .btn-upload { background: #e94560; width: 100%; margin-top: 10px; }
-        .btn-play { background: #28a745; }
-        .btn-delete { background: #dc3545; margin-left: 8px; }
-        input[type="file"] { background: #0f3460; padding: 10px; border-radius: 5px; width: 100%; box-sizing: border-box; }
-        #status { margin: 15px 0; color: #00d4ff; font-size: 0.9em; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0b0b15; color: white; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: #16162a; padding: 40px; border-radius: 20px; border: 2px solid #e94560; box-shadow: 0 0 30px rgba(233, 69, 96, 0.2); }
+        h1 { color: #e94560; font-size: 2.5em; text-shadow: 2px 2px #000; margin-bottom: 10px; }
+        .upload-zone { background: #1f1f3d; padding: 25px; border-radius: 15px; margin-bottom: 30px; border: 1px dashed #444; }
+        .game-card { background: #25254d; margin: 15px 0; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
+        .game-card:hover { transform: translateX(10px); background: #2d2d5f; }
+        .btn { border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; text-transform: uppercase; }
+        .btn-upload { background: #e94560; margin-top: 15px; width: 200px; }
+        .btn-play { background: #00d4ff; box-shadow: 0 0 10px rgba(0, 212, 255, 0.4); }
+        .btn-delete { background: #ff4d4d; margin-left: 10px; }
+        #status { color: #00ffcc; font-weight: bold; margin-top: 15px; }
+        .no-game { color: #666; font-style: italic; margin-top: 50px; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>🎮 Vortex Arcade</h1>
-        <p>Postez vos dossiers de jeux en <b>.zip</b></p>
+        <h1>🎮 VORTEX ARCADE</h1>
+        <p>Héberge tes créations HTML5 instantanément</p>
         
-        <input type="file" id="fileInput" accept=".zip">
-        <button class="btn btn-upload" onclick="uploadGame()">PUBLIER LE JEU</button>
-        <p id="status">Prêt pour un nouveau jeu ?</p>
+        <div class="upload-zone">
+            <input type="file" id="fileInput" accept=".zip">
+            <br>
+            <button class="btn btn-upload" onclick="uploadGame()">PUBLIER (ZIP)</button>
+            <p id="status">En attente d'un jeu...</p>
+        </div>
 
-        <hr style="border: 0.5px solid #0f3460; margin: 30px 0;">
-        
-        <div id="gameList">Chargement de la bibliothèque...</div>
+        <h2 style="text-align: left; border-bottom: 2px solid #e94560; padding-bottom: 10px;">MA BIBLIOTHÈQUE</h2>
+        <div id="gameList">Vérification des serveurs...</div>
     </div>
 
     <script>
@@ -44,15 +48,16 @@
         async function uploadGame() {
             const file = document.getElementById('fileInput').files[0];
             const status = document.getElementById('status');
-            if (!file) return alert("Sélectionne un fichier ZIP !");
+            if (!file) return alert("Choisis un fichier ZIP !");
             
-            status.innerText = "🚀 Envoi du pack de jeu...";
+            status.innerText = "🚀 TRANSMISSION EN COURS...";
             try {
                 await storage.createFile(BUCKET_ID, Appwrite.ID.unique(), file);
-                status.innerText = "✅ ZIP envoyé ! Le robot le décompresse...";
-                setTimeout(loadGames, 3000); // Attend 3s que le robot finisse
+                status.innerText = "✅ REÇU ! Extraction par le robot Vortex...";
+                // On laisse 5 secondes au robot pour décompresser avant de rafraîchir
+                setTimeout(loadGames, 5000); 
             } catch (e) {
-                status.innerText = "❌ Erreur : " + e.message;
+                status.innerText = "❌ ERREUR : " + e.message;
             }
         }
 
@@ -60,34 +65,37 @@
             const list = document.getElementById('gameList');
             try {
                 const res = await storage.listFiles(BUCKET_ID);
-                // On ne montre que les fichiers qui ne sont pas des ZIP (ceux extraits par le robot)
-                const playables = res.files.filter(f => f.name.toLowerCase().endsWith('.html'));
                 
-                if (playables.length === 0) {
-                    list.innerHTML = "<p>Aucun jeu prêt. Envoie un ZIP et attends 5 secondes !</p>";
+                // FILTRE CRITIQUE : On ne montre que les fichiers HTML (les jeux décompressés)
+                // On cache les fichiers .zip originaux pour éviter l'écran noir
+                const playableGames = res.files.filter(f => f.name.toLowerCase().endsWith('.html'));
+                
+                if (playableGames.length === 0) {
+                    list.innerHTML = "<p class='no-game'>Aucun jeu jouable. Envoie un ZIP et attends quelques secondes.</p>";
                 } else {
-                    list.innerHTML = playables.map(file => `
+                    list.innerHTML = playableGames.map(file => `
                         <div class="game-card">
-                            <span><b>${file.name}</b></span>
+                            <span style="font-size: 1.2em;">🕹️ <b>${file.name.replace('.html', '')}</b></span>
                             <div>
-                                <button class="btn btn-play" onclick="playGame('${file.$id}')">LANCER</button>
-                                <button class="btn btn-delete" onclick="deleteGame('${file.$id}')">SUPPR</button>
+                                <button class="btn btn-play" onclick="playGame('${file.$id}')">LANCER LE JEU</button>
+                                <button class="btn btn-delete" onclick="deleteGame('${file.$id}')">SUPPRIMER</button>
                             </div>
                         </div>
                     `).join('');
                 }
             } catch (e) {
-                list.innerText = "Connexion perdue...";
+                list.innerText = "Erreur de chargement...";
             }
         }
 
         function playGame(fileId) {
+            // Cette URL pointe directement vers le fichier HTML extrait
             const url = storage.getFileView(BUCKET_ID, fileId);
             window.open(url, '_blank');
         }
 
         async function deleteGame(fileId) {
-            if (!confirm("Supprimer ce fichier ?")) return;
+            if (!confirm("Supprimer définitivement ce jeu ?")) return;
             try {
                 await storage.deleteFile(BUCKET_ID, fileId);
                 loadGames();
@@ -96,8 +104,9 @@
             }
         }
 
+        // Chargement initial
         loadGames();
-        // Rafraîchir toutes les 10 secondes pour voir les nouveaux fichiers extraits
+        // Vérifie les nouveaux jeux toutes les 10 secondes
         setInterval(loadGames, 10000);
     </script>
 </body>
