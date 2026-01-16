@@ -2,42 +2,60 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Vortex Arcade</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vortex Arcade - Gestionnaire de Jeux</title>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0f0f1b; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 800px; margin: auto; background: #1a1a2e; padding: 30px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .game-card { background: #16213e; margin: 15px 0; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #0f3460; }
-        button { background: #e94560; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        button:hover { background: #ff4d6d; transform: scale(1.05); }
-        input[type="file"] { margin-bottom: 20px; }
-        #game-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 100; }
-        #game-frame { width: 100%; height: 90%; border: none; }
-        .close-btn { position: absolute; top: 10px; right: 20px; font-size: 30px; color: white; cursor: pointer; }
+        h1 { color: #e94560; margin-bottom: 30px; }
+        
+        /* Style des cartes de jeux */
+        .game-card { 
+            background: #16213e; 
+            margin: 15px 0; 
+            padding: 20px; 
+            border-radius: 10px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border: 1px solid #0f3460; 
+        }
+        .game-info { text-align: left; }
+        .game-name { font-weight: bold; font-size: 1.1em; display: block; }
+
+        /* Boutons */
+        .btn { border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; color: white; text-decoration: none; }
+        .btn-upload { background: #e94560; margin-top: 10px; }
+        .btn-play { background: #28a745; }
+        .btn-play:hover { background: #218838; }
+        .btn-delete { background: #dc3545; margin-left: 10px; }
+        .btn-delete:hover { background: #c82333; }
+        
+        input[type="file"] { background: #0f3460; padding: 10px; border-radius: 5px; margin-right: 10px; }
+        #status { margin-top: 15px; color: #aaa; font-style: italic; }
+        hr { border: 0.5px solid #0f3460; margin: 30px 0; }
     </style>
 </head>
 <body>
 
-    <div id="game-screen">
-        <span class="close-btn" onclick="closeGame()">&times; FERMER</span>
-        <iframe id="game-frame"></iframe>
-    </div>
-
     <div class="container">
         <h1>🎮 Vortex Arcade</h1>
-        <p>Poste ton jeu en <b>.zip</b> (doit contenir un index.html)</p>
-        <input type="file" id="fileInput" accept=".zip">
-        <button onclick="uploadGame()">PUBLIER MON JEU</button>
-        <p id="status"></p>
-
-        <hr style="border: 0.5px solid #0f3460; margin: 30px 0;">
         
-        <h2>Jeux de la communauté</h2>
-        <div id="gameList">Chargement des pépites...</div>
+        <div style="margin-bottom: 20px;">
+            <input type="file" id="fileInput">
+            <button class="btn btn-upload" onclick="uploadGame()">METTRE EN LIGNE</button>
+            <p id="status"></p>
+        </div>
+
+        <hr>
+        
+        <h2>Mes Jeux</h2>
+        <div id="gameList">Chargement de la bibliothèque...</div>
     </div>
 
     <script>
+        // Configuration Appwrite
         const client = new Appwrite.Client()
             .setEndpoint('https://fra.cloud.appwrite.io/v1') 
             .setProject('alexandrelevet1971'); 
@@ -45,104 +63,74 @@
         const storage = new Appwrite.Storage(client);
         const BUCKET_ID = 'alexandrelevet1972'; 
 
+        // 1. Envoyer un jeu
         async function uploadGame() {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
             const status = document.getElementById('status');
-            if (!file) return alert("Choisis un fichier .zip !");
-
-            status.innerText = "🚀 Envoi vers le serveur...";
-            try {
-                await storage.createFile(BUCKET_ID, Appwrite.ID.unique(), file);
-                status.innerText = "✅ Jeu publié !";
-                fileInput.value = "";
-                loadGames();
-            } catch (e) {
-                status.innerText = "❌ Erreur : " + e.message;
-            }
-        }
-
-        async function playZipGame(fileId) {
-            const status = document.getElementById('status');
-            status.innerText = "🕹️ Préparation du jeu...";
+            
+            if (!file) return alert("Veuillez choisir un fichier !");
+            
+            status.innerText = "🚀 Téléchargement vers Vortex...";
             
             try {
-                const result = await storage.getFileDownload(BUCKET_ID, fileId);
-                const response = await fetch(result.href);
-                const blob = await response.blob();
-                
-                const zip = await JSZip.loadAsync(blob);
-                const indexFile = Object.keys(zip.files).find(name => name.endsWith('index.html'));
-                
-                if (!indexFile) {
-                    alert("Erreur : Pas de fichier 'index.html' trouvé dans le .zip !");
-                    return;
-                }
-
-                // Extraire tous les fichiers et créer des URLs temporaires
-                const htmlContent = await zip.file(indexFile).async("string");
-                const blobUrl = URL.createObjectURL(new Blob([htmlContent], { type: 'text/html' }));
-                
-                document.getElementById('game-frame').src = blobUrl;
-                document.getElementById('game-screen').style.display = 'block';
-                status.innerText = "";
+                await storage.createFile(BUCKET_ID, Appwrite.ID.unique(), file);
+                status.innerText = "✅ Succès ! Votre jeu est en ligne.";
+                fileInput.value = ""; // Réinitialise l'input
+                loadGames(); // Rafraîchit la liste
             } catch (e) {
-                alert("Impossible de lancer le jeu : " + e.message);
+                status.innerText = "❌ Erreur : " + e.message;
+                console.error(e);
             }
         }
 
-        function closeGame() {
-            document.getElementById('game-screen').style.display = 'none';
-            document.getElementById('game-frame').src = "";
-        }
-
-        async function playZipGame(fileId) {
-    const status = document.getElementById('status');
-    status.innerText = "🕹️ Chargement du moteur de jeu...";
-    
-    try {
-        const result = await storage.getFileDownload(BUCKET_ID, fileId);
-        const response = await fetch(result.href);
-        const blob = await response.blob();
-        const zip = await JSZip.loadAsync(blob);
-        
-        // On cherche le fichier index.html
-        const indexFile = Object.keys(zip.files).find(name => name.endsWith('index.html'));
-        if (!indexFile) return alert("Pas de index.html dans le zip !");
-
-        // On prépare un environnement pour que le HTML trouve ses images/scripts
-        const fileData = await zip.file(indexFile).async("string");
-        
-        // Création d'un "Blob" qui contient tout le code du jeu
-        const blobUrl = URL.createObjectURL(new Blob([fileData], { type: 'text/html' }));
-        
-        const frame = document.getElementById('game-frame');
-        frame.src = blobUrl;
-        document.getElementById('game-screen').style.display = 'block';
-        status.innerText = "";
-    } catch (e) {
-        alert("Erreur fatale : " + e.message);
-    }
-}
-
+        // 2. Charger et afficher la liste
         async function loadGames() {
             const list = document.getElementById('gameList');
             try {
                 const res = await storage.listFiles(BUCKET_ID);
                 if (res.files.length === 0) {
-                    list.innerHTML = "<p>Aucun jeu disponible. Sois le premier !</p>";
+                    list.innerHTML = "<p>Aucun jeu disponible pour le moment.</p>";
                 } else {
                     list.innerHTML = res.files.map(file => `
                         <div class="game-card">
-                            <span><b>${file.name}</b></span>
-                            <button onclick="playZipGame('${file.$id}')">JOUER</button>
+                            <div class="game-info">
+                                <span class="game-name">${file.name}</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-play" onclick="playGame('${file.$id}')">JOUER</button>
+                                <button class="btn btn-delete" onclick="deleteGame('${file.$id}')">SUPPRIMER</button>
+                            </div>
                         </div>
                     `).join('');
                 }
             } catch (e) {
-                list.innerText = "Erreur de connexion à Appwrite.";
+                list.innerText = "Erreur de connexion à la base de données.";
+                console.error(e);
             }
         }
+
+        // 3. Ouvrir le jeu
+        function playGame(fileId) {
+            // Ouvre le fichier dans un nouvel onglet
+            const url = storage.getFileView(BUCKET_ID, fileId);
+            window.open(url, '_blank');
+        }
+
+        // 4. Supprimer un jeu
+        async function deleteGame(fileId) {
+            if (!confirm("⚠️ Voulez-vous vraiment supprimer ce jeu de Vortex ?")) return;
+            
+            try {
+                await storage.deleteFile(BUCKET_ID, fileId);
+                alert("Jeu supprimé définitivement.");
+                loadGames();
+            } catch (e) {
+                alert("Erreur lors de la suppression : " + e.message);
+            }
+        }
+
+        // Lancement au chargement de la page
         loadGames();
     </script>
 </body>
