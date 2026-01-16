@@ -2,26 +2,39 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Hébergeur de Jeux Web</title>
+    <title>Vortex Arcade</title>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        body { font-family: sans-serif; background: #111; color: white; text-align: center; padding: 50px; }
-        .container { background: #222; padding: 20px; border-radius: 10px; display: inline-block; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
-        .game-card { background: #333; margin: 10px; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0f1b; color: white; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 800px; margin: auto; background: #1a1a2e; padding: 30px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        .game-card { background: #16213e; margin: 15px 0; padding: 20px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #0f3460; }
+        button { background: #e94560; color: white; border: none; padding: 10px 25px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        button:hover { background: #ff4d6d; transform: scale(1.05); }
+        input[type="file"] { margin-bottom: 20px; }
+        #game-screen { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: black; z-index: 100; }
+        #game-frame { width: 100%; height: 90%; border: none; }
+        .close-btn { position: absolute; top: 10px; right: 20px; font-size: 30px; color: white; cursor: pointer; }
     </style>
 </head>
 <body>
 
+    <div id="game-screen">
+        <span class="close-btn" onclick="closeGame()">&times; FERMER</span>
+        <iframe id="game-frame"></iframe>
+    </div>
+
     <div class="container">
-        <h1>🎮 Mon Hébergeur de Jeux</h1>
-        <input type="file" id="fileInput">
-        <button onclick="uploadGame()">Mettre en ligne</button>
+        <h1>🎮 Vortex Arcade</h1>
+        <p>Poste ton jeu en <b>.zip</b> (doit contenir un index.html)</p>
+        <input type="file" id="fileInput" accept=".zip">
+        <button onclick="uploadGame()">PUBLIER MON JEU</button>
         <p id="status"></p>
 
-        <hr>
-        <h3>Jeux disponibles</h3>
-        <div id="gameList">Chargement...</div>
+        <hr style="border: 0.5px solid #0f3460; margin: 30px 0;">
+        
+        <h2>Jeux de la communauté</h2>
+        <div id="gameList">Chargement des pépites...</div>
     </div>
 
     <script>
@@ -33,17 +46,54 @@
         const BUCKET_ID = 'alexandrelevet1972'; 
 
         async function uploadGame() {
-            const file = document.getElementById('fileInput').files[0];
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
             const status = document.getElementById('status');
-            if (!file) return alert("Choisis un fichier !");
-            status.innerText = "Téléchargement en cours...";
+            if (!file) return alert("Choisis un fichier .zip !");
+
+            status.innerText = "🚀 Envoi vers le serveur...";
             try {
                 await storage.createFile(BUCKET_ID, Appwrite.ID.unique(), file);
-                status.innerText = "Succès !";
+                status.innerText = "✅ Jeu publié !";
+                fileInput.value = "";
                 loadGames();
             } catch (e) {
-                status.innerText = "Erreur : " + e.message;
+                status.innerText = "❌ Erreur : " + e.message;
             }
+        }
+
+        async function playZipGame(fileId) {
+            const status = document.getElementById('status');
+            status.innerText = "🕹️ Préparation du jeu...";
+            
+            try {
+                const result = await storage.getFileDownload(BUCKET_ID, fileId);
+                const response = await fetch(result.href);
+                const blob = await response.blob();
+                
+                const zip = await JSZip.loadAsync(blob);
+                const indexFile = Object.keys(zip.files).find(name => name.endsWith('index.html'));
+                
+                if (!indexFile) {
+                    alert("Erreur : Pas de fichier 'index.html' trouvé dans le .zip !");
+                    return;
+                }
+
+                // Extraire tous les fichiers et créer des URLs temporaires
+                const htmlContent = await zip.file(indexFile).async("string");
+                const blobUrl = URL.createObjectURL(new Blob([htmlContent], { type: 'text/html' }));
+                
+                document.getElementById('game-frame').src = blobUrl;
+                document.getElementById('game-screen').style.display = 'block';
+                status.innerText = "";
+            } catch (e) {
+                alert("Impossible de lancer le jeu : " + e.message);
+            }
+        }
+
+        function closeGame() {
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('game-frame').src = "";
         }
 
         async function loadGames() {
@@ -51,18 +101,17 @@
             try {
                 const res = await storage.listFiles(BUCKET_ID);
                 if (res.files.length === 0) {
-                    list.innerText = "Aucun jeu pour le moment.";
+                    list.innerHTML = "<p>Aucun jeu disponible. Sois le premier !</p>";
                 } else {
                     list.innerHTML = res.files.map(file => `
                         <div class="game-card">
-                            <span>${file.name}</span>
-                            <button onclick="window.open('${storage.getFileView(BUCKET_ID, file.$id)}')">Jouer</button>
+                            <span><b>${file.name}</b></span>
+                            <button onclick="playZipGame('${file.$id}')">JOUER</button>
                         </div>
                     `).join('');
                 }
             } catch (e) {
                 list.innerText = "Erreur de connexion à Appwrite.";
-                console.error(e);
             }
         }
         loadGames();
