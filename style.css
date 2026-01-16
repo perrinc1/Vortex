@@ -1,0 +1,14 @@
+body { font-family: 'Segoe UI', sans-serif; background: #0b0b15; color: white; text-align: center; margin: 0; padding: 20px; }
+.container { max-width: 900px; margin: auto; background: #16162a; padding: 40px; border-radius: 20px; border: 2px solid #e94560; box-shadow: 0 0 30px rgba(233, 69, 96, 0.3); }
+h1 { color: #e94560; font-size: 2.8em; margin-bottom: 5px; text-shadow: 0 0 10px rgba(233, 69, 96, 0.5); }
+.subtitle { color: #aaa; margin-bottom: 30px; font-style: italic; }
+.upload-zone { background: #1f1f3d; padding: 30px; border-radius: 15px; margin-bottom: 40px; border: 2px dashed #444; }
+input[type="file"] { background: #2d2d5f; padding: 12px; border-radius: 8px; margin-bottom: 15px; width: 80%; cursor: pointer; color: white; }
+.game-card { background: #25254d; margin: 15px 0; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #e94560; transition: 0.3s; }
+.game-card:hover { transform: scale(1.02); background: #2d2d5f; }
+.btn { border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; text-transform: uppercase; transition: 0.2s; }
+.btn-upload { background: #e94560; width: 250px; }
+.btn-play { background: #00d4ff; }
+.btn-delete { background: #ff4d4d; margin-left: 10px; }
+#status { color: #00ffcc; font-weight: bold; margin-top: 20px; min-height: 24px; }
+hr { border: 0.5px solid #2d2d5f; margin: 30px 0; }
