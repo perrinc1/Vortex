@@ -96,6 +96,35 @@
             document.getElementById('game-frame').src = "";
         }
 
+        async function playZipGame(fileId) {
+    const status = document.getElementById('status');
+    status.innerText = "🕹️ Chargement du moteur de jeu...";
+    
+    try {
+        const result = await storage.getFileDownload(BUCKET_ID, fileId);
+        const response = await fetch(result.href);
+        const blob = await response.blob();
+        const zip = await JSZip.loadAsync(blob);
+        
+        // On cherche le fichier index.html
+        const indexFile = Object.keys(zip.files).find(name => name.endsWith('index.html'));
+        if (!indexFile) return alert("Pas de index.html dans le zip !");
+
+        // On prépare un environnement pour que le HTML trouve ses images/scripts
+        const fileData = await zip.file(indexFile).async("string");
+        
+        // Création d'un "Blob" qui contient tout le code du jeu
+        const blobUrl = URL.createObjectURL(new Blob([fileData], { type: 'text/html' }));
+        
+        const frame = document.getElementById('game-frame');
+        frame.src = blobUrl;
+        document.getElementById('game-screen').style.display = 'block';
+        status.innerText = "";
+    } catch (e) {
+        alert("Erreur fatale : " + e.message);
+    }
+}
+
         async function loadGames() {
             const list = document.getElementById('gameList');
             try {
