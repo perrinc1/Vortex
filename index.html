@@ -7,33 +7,48 @@
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0b0b15; color: white; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: auto; background: #16162a; padding: 40px; border-radius: 20px; border: 2px solid #e94560; box-shadow: 0 0 30px rgba(233, 69, 96, 0.2); }
-        h1 { color: #e94560; font-size: 2.5em; text-shadow: 2px 2px #000; margin-bottom: 10px; }
-        .upload-zone { background: #1f1f3d; padding: 25px; border-radius: 15px; margin-bottom: 30px; border: 1px dashed #444; }
-        .game-card { background: #25254d; margin: 15px 0; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
-        .btn { border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; text-transform: uppercase; }
-        .btn-upload { background: #e94560; margin-top: 15px; width: 200px; }
-        .btn-play { background: #00d4ff; box-shadow: 0 0 10px rgba(0, 212, 255, 0.4); }
+        .container { max-width: 900px; margin: auto; background: #16162a; padding: 40px; border-radius: 20px; border: 2px solid #e94560; box-shadow: 0 0 30px rgba(233, 69, 96, 0.3); }
+        h1 { color: #e94560; font-size: 2.8em; margin-bottom: 5px; text-shadow: 0 0 10px rgba(233, 69, 96, 0.5); }
+        .subtitle { color: #aaa; margin-bottom: 30px; font-style: italic; }
+        
+        .upload-zone { background: #1f1f3d; padding: 30px; border-radius: 15px; margin-bottom: 40px; border: 2px dashed #444; }
+        input[type="file"] { background: #2d2d5f; padding: 12px; border-radius: 8px; margin-bottom: 15px; width: 80%; cursor: pointer; color: white; }
+        
+        .game-card { background: #25254d; margin: 15px 0; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 5px solid #e94560; transition: 0.3s; }
+        .game-card:hover { transform: scale(1.02); background: #2d2d5f; }
+        
+        .btn { border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; text-transform: uppercase; transition: 0.2s; }
+        .btn-upload { background: #e94560; width: 250px; }
+        .btn-upload:hover { background: #ff4d6d; }
+        .btn-play { background: #00d4ff; }
+        .btn-play:hover { background: #00f2ff; box-shadow: 0 0 15px rgba(0, 212, 255, 0.5); }
         .btn-delete { background: #ff4d4d; margin-left: 10px; }
-        #status { color: #00ffcc; font-weight: bold; margin-top: 15px; }
+        .btn-delete:hover { background: #ff0000; }
+        
+        #status { color: #00ffcc; font-weight: bold; margin-top: 20px; min-height: 24px; }
+        hr { border: 0.5px solid #2d2d5f; margin: 30px 0; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <h1>🎮 VORTEX ARCADE</h1>
+        <p class="subtitle">La plateforme ultime pour héberger tes jeux HTML5</p>
+        
         <div class="upload-zone">
             <input type="file" id="fileInput" accept=".zip">
             <br>
-            <button class="btn btn-upload" onclick="uploadGame()">PUBLIER (ZIP)</button>
-            <p id="status">Prêt pour un nouveau jeu...</p>
+            <button class="btn btn-upload" onclick="uploadGame()">PUBLIER MON JEU (ZIP)</button>
+            <p id="status"></p>
         </div>
 
-        <h2 style="text-align: left; border-bottom: 2px solid #e94560; padding-bottom: 10px;">MA BIBLIOTHÈQUE</h2>
-        <div id="gameList">Chargement...</div>
+        <h2 style="text-align: left; color: #e94560;">BIBLIOTHÈQUE DE JEUX</h2>
+        <hr>
+        <div id="gameList">Chargement des fichiers en cours...</div>
     </div>
 
     <script>
+        // 1. Initialisation d'Appwrite
         const client = new Appwrite.Client()
             .setEndpoint('https://fra.cloud.appwrite.io/v1') 
             .setProject('alexandrelevet1971'); 
@@ -41,38 +56,47 @@
         const storage = new Appwrite.Storage(client);
         const BUCKET_ID = 'alexandrelevet1972'; 
 
+        // 2. Fonction pour mettre en ligne le fichier ZIP
         async function uploadGame() {
-            const file = document.getElementById('fileInput').files[0];
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
             const status = document.getElementById('status');
-            if (!file) return alert("Choisis un fichier ZIP !");
             
-            status.innerText = "🚀 ENVOI EN COURS...";
+            if (!file) return alert("Choisis d'abord un fichier ZIP !");
+            
+            status.innerText = "🚀 TRANSFERT VERS VORTEX...";
             try {
                 await storage.createFile(BUCKET_ID, Appwrite.ID.unique(), file);
-                status.innerText = "✅ REÇU ! Extraction en cours...";
-                setTimeout(loadGames, 4000); 
+                status.innerText = "✅ REÇU ! Le robot prépare ton jeu...";
+                fileInput.value = "";
+                // On recharge la liste après 3 secondes
+                setTimeout(loadGames, 3000); 
             } catch (e) {
                 status.innerText = "❌ ERREUR : " + e.message;
             }
         }
 
+        // 3. Fonction pour afficher la liste des fichiers
         async function loadGames() {
             const list = document.getElementById('gameList');
             try {
                 const res = await storage.listFiles(BUCKET_ID);
                 
                 if (res.files.length === 0) {
-                    list.innerHTML = "<p>Aucun fichier trouvé.</p>";
+                    list.innerHTML = "<p style='color: #666;'>Aucun fichier trouvé dans le stockage.</p>";
                     return;
                 }
 
                 list.innerHTML = res.files.map(file => {
+                    // On vérifie si c'est un fichier HTML (jeu extrait) ou ZIP (paquet)
                     const isHTML = file.name.toLowerCase().endsWith('.html');
                     const isZIP = file.name.toLowerCase().endsWith('.zip');
                     
                     return `
                         <div class="game-card">
-                            <span style="font-size: 1.1em;">${isHTML ? '🕹️' : '📦'} <b>${file.name}</b></span>
+                            <span style="font-weight: bold;">
+                                ${isHTML ? '🕹️' : '📦'} ${file.name}
+                            </span>
                             <div>
                                 ${isHTML ? `<button class="btn btn-play" onclick="playGame('${file.$id}')">LANCER</button>` : ''}
                                 <button class="btn btn-delete" onclick="deleteGame('${file.$id}')">SUPPRIMER</button>
@@ -81,26 +105,33 @@
                     `;
                 }).join('');
             } catch (e) {
-                list.innerText = "Erreur de connexion...";
+                list.innerText = "Erreur de connexion à Appwrite.";
+                console.error(e);
             }
         }
 
+        // 4. Fonction pour lancer le jeu
         function playGame(fileId) {
-            window.open(storage.getFileView(BUCKET_ID, fileId), '_blank');
+            // Ouvre le fichier HTML dans un nouvel onglet
+            const url = storage.getFileView(BUCKET_ID, fileId);
+            window.open(url, '_blank');
         }
 
+        // 5. Fonction pour supprimer un fichier
         async function deleteGame(fileId) {
-            if (!confirm("Supprimer ce fichier ?")) return;
+            if (!confirm("⚠️ Veux-tu vraiment supprimer ce fichier définitivement ?")) return;
             try {
                 await storage.deleteFile(BUCKET_ID, fileId);
                 loadGames();
             } catch (e) {
-                alert("Erreur : " + e.message);
+                alert("Erreur de suppression : " + e.message);
             }
         }
 
+        // Lancement automatique au chargement de la page
         loadGames();
-        setInterval(loadGames, 8000);
+        // Vérification toutes les 10 secondes pour voir si le robot a fini
+        setInterval(loadGames, 10000);
     </script>
 </body>
 </html>
