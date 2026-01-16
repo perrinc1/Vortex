@@ -3,59 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vortex Arcade - Gestionnaire de Jeux</title>
+    <title>Vortex Arcade v2</title>
     <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0f0f1b; color: white; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 800px; margin: auto; background: #1a1a2e; padding: 30px; border-radius: 15px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        h1 { color: #e94560; margin-bottom: 30px; }
-        
-        /* Style des cartes de jeux */
-        .game-card { 
-            background: #16213e; 
-            margin: 15px 0; 
-            padding: 20px; 
-            border-radius: 10px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            border: 1px solid #0f3460; 
-        }
-        .game-info { text-align: left; }
-        .game-name { font-weight: bold; font-size: 1.1em; display: block; }
-
-        /* Boutons */
-        .btn { border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.3s; color: white; text-decoration: none; }
-        .btn-upload { background: #e94560; margin-top: 10px; }
+        .container { max-width: 800px; margin: auto; background: #1a1a2e; padding: 30px; border-radius: 15px; border: 1px solid #0f3460; }
+        h1 { color: #e94560; text-transform: uppercase; letter-spacing: 2px; }
+        .game-card { background: #16213e; margin: 15px 0; padding: 15px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .btn { border: none; padding: 10px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; transition: 0.2s; }
+        .btn-upload { background: #e94560; width: 100%; margin-top: 10px; }
         .btn-play { background: #28a745; }
-        .btn-play:hover { background: #218838; }
-        .btn-delete { background: #dc3545; margin-left: 10px; }
-        .btn-delete:hover { background: #c82333; }
-        
-        input[type="file"] { background: #0f3460; padding: 10px; border-radius: 5px; margin-right: 10px; }
-        #status { margin-top: 15px; color: #aaa; font-style: italic; }
-        hr { border: 0.5px solid #0f3460; margin: 30px 0; }
+        .btn-delete { background: #dc3545; margin-left: 8px; }
+        input[type="file"] { background: #0f3460; padding: 10px; border-radius: 5px; width: 100%; box-sizing: border-box; }
+        #status { margin: 15px 0; color: #00d4ff; font-size: 0.9em; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <h1>🎮 Vortex Arcade</h1>
+        <p>Postez vos dossiers de jeux en <b>.zip</b></p>
         
-        <div style="margin-bottom: 20px;">
-            <input type="file" id="fileInput">
-            <button class="btn btn-upload" onclick="uploadGame()">METTRE EN LIGNE</button>
-            <p id="status"></p>
-        </div>
+        <input type="file" id="fileInput" accept=".zip">
+        <button class="btn btn-upload" onclick="uploadGame()">PUBLIER LE JEU</button>
+        <p id="status">Prêt pour un nouveau jeu ?</p>
 
-        <hr>
+        <hr style="border: 0.5px solid #0f3460; margin: 30px 0;">
         
-        <h2>Mes Jeux</h2>
         <div id="gameList">Chargement de la bibliothèque...</div>
     </div>
 
     <script>
-        // Configuration Appwrite
         const client = new Appwrite.Client()
             .setEndpoint('https://fra.cloud.appwrite.io/v1') 
             .setProject('alexandrelevet1971'); 
@@ -63,75 +41,64 @@
         const storage = new Appwrite.Storage(client);
         const BUCKET_ID = 'alexandrelevet1972'; 
 
-        // 1. Envoyer un jeu
         async function uploadGame() {
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
+            const file = document.getElementById('fileInput').files[0];
             const status = document.getElementById('status');
+            if (!file) return alert("Sélectionne un fichier ZIP !");
             
-            if (!file) return alert("Veuillez choisir un fichier !");
-            
-            status.innerText = "🚀 Téléchargement vers Vortex...";
-            
+            status.innerText = "🚀 Envoi du pack de jeu...";
             try {
                 await storage.createFile(BUCKET_ID, Appwrite.ID.unique(), file);
-                status.innerText = "✅ Succès ! Votre jeu est en ligne.";
-                fileInput.value = ""; // Réinitialise l'input
-                loadGames(); // Rafraîchit la liste
+                status.innerText = "✅ ZIP envoyé ! Le robot le décompresse...";
+                setTimeout(loadGames, 3000); // Attend 3s que le robot finisse
             } catch (e) {
                 status.innerText = "❌ Erreur : " + e.message;
-                console.error(e);
             }
         }
 
-        // 2. Charger et afficher la liste
         async function loadGames() {
             const list = document.getElementById('gameList');
             try {
                 const res = await storage.listFiles(BUCKET_ID);
-                if (res.files.length === 0) {
-                    list.innerHTML = "<p>Aucun jeu disponible pour le moment.</p>";
+                // On ne montre que les fichiers qui ne sont pas des ZIP (ceux extraits par le robot)
+                const playables = res.files.filter(f => f.name.toLowerCase().endsWith('.html'));
+                
+                if (playables.length === 0) {
+                    list.innerHTML = "<p>Aucun jeu prêt. Envoie un ZIP et attends 5 secondes !</p>";
                 } else {
-                    list.innerHTML = res.files.map(file => `
+                    list.innerHTML = playables.map(file => `
                         <div class="game-card">
-                            <div class="game-info">
-                                <span class="game-name">${file.name}</span>
-                            </div>
+                            <span><b>${file.name}</b></span>
                             <div>
-                                <button class="btn btn-play" onclick="playGame('${file.$id}')">JOUER</button>
-                                <button class="btn btn-delete" onclick="deleteGame('${file.$id}')">SUPPRIMER</button>
+                                <button class="btn btn-play" onclick="playGame('${file.$id}')">LANCER</button>
+                                <button class="btn btn-delete" onclick="deleteGame('${file.$id}')">SUPPR</button>
                             </div>
                         </div>
                     `).join('');
                 }
             } catch (e) {
-                list.innerText = "Erreur de connexion à la base de données.";
-                console.error(e);
+                list.innerText = "Connexion perdue...";
             }
         }
 
-        // 3. Ouvrir le jeu
         function playGame(fileId) {
-            // Ouvre le fichier dans un nouvel onglet
             const url = storage.getFileView(BUCKET_ID, fileId);
             window.open(url, '_blank');
         }
 
-        // 4. Supprimer un jeu
         async function deleteGame(fileId) {
-            if (!confirm("⚠️ Voulez-vous vraiment supprimer ce jeu de Vortex ?")) return;
-            
+            if (!confirm("Supprimer ce fichier ?")) return;
             try {
                 await storage.deleteFile(BUCKET_ID, fileId);
-                alert("Jeu supprimé définitivement.");
                 loadGames();
             } catch (e) {
-                alert("Erreur lors de la suppression : " + e.message);
+                alert("Erreur : " + e.message);
             }
         }
 
-        // Lancement au chargement de la page
         loadGames();
+        // Rafraîchir toutes les 10 secondes pour voir les nouveaux fichiers extraits
+        setInterval(loadGames, 10000);
     </script>
 </body>
 </html>
