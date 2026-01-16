@@ -1,44 +1,71 @@
-<script>
-    const client = new Appwrite.Client()
-        // Utilise bien le serveur "fra" comme indiqué dans tes réglages
-        .setEndpoint('https://fra.cloud.appwrite.io/v1') 
-        .setProject('alexandrelevet1971'); 
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Hébergeur de Jeux Web</title>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@13.0.1"></script>
+    <style>
+        body { font-family: sans-serif; background: #111; color: white; text-align: center; padding: 50px; }
+        .container { background: #222; padding: 20px; border-radius: 10px; display: inline-block; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        .game-card { background: #333; margin: 10px; padding: 15px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
 
-    const storage = new Appwrite.Storage(client);
-    // Utilise ton nouveau Bucket
-    const BUCKET_ID = 'alexandrelevet1972'; 
+    <div class="container">
+        <h1>🎮 Mon Hébergeur de Jeux</h1>
+        <input type="file" id="fileInput">
+        <button onclick="uploadGame()">Mettre en ligne</button>
+        <p id="status"></p>
 
-    async function uploadGame() {
-        const file = document.getElementById('fileInput').files[0];
-        const status = document.getElementById('status');
-        if (!file) return alert("Choisis un fichier .zip !");
+        <hr>
+        <h3>Jeux disponibles</h3>
+        <div id="gameList">Chargement...</div>
+    </div>
 
-        status.innerText = "Téléchargement en cours...";
+    <script>
+        const client = new Appwrite.Client()
+            .setEndpoint('https://fra.cloud.appwrite.io/v1') 
+            .setProject('alexandrelevet1971'); 
 
-        try {
-            await storage.createFile(BUCKET_ID, Appwrite.ID.unique(), file);
-            status.innerText = "Succès ! Recharge la page.";
-            loadGames();
-        } catch (e) {
-            status.innerText = "Erreur : " + e.message;
-            console.error(e);
+        const storage = new Appwrite.Storage(client);
+        const BUCKET_ID = 'alexandrelevet1972'; 
+
+        async function uploadGame() {
+            const file = document.getElementById('fileInput').files[0];
+            const status = document.getElementById('status');
+            if (!file) return alert("Choisis un fichier !");
+            status.innerText = "Téléchargement en cours...";
+            try {
+                await storage.createFile(BUCKET_ID, Appwrite.ID.unique(), file);
+                status.innerText = "Succès !";
+                loadGames();
+            } catch (e) {
+                status.innerText = "Erreur : " + e.message;
+            }
         }
-    }
 
-    async function loadGames() {
-        const list = document.getElementById('gameList');
-        try {
-            const res = await storage.listFiles(BUCKET_ID);
-            list.innerHTML = res.files.map(file => `
-                <div class="game-card">
-                    <span>${file.name}</span>
-                    <button onclick="window.open('${storage.getFileView(BUCKET_ID, file.$id)}')">Jouer / Télécharger</button>
-                </div>
-            `).join('');
-        } catch (e) {
-            list.innerText = "Erreur de chargement des jeux.";
-            console.error(e);
+        async function loadGames() {
+            const list = document.getElementById('gameList');
+            try {
+                const res = await storage.listFiles(BUCKET_ID);
+                if (res.files.length === 0) {
+                    list.innerText = "Aucun jeu pour le moment.";
+                } else {
+                    list.innerHTML = res.files.map(file => `
+                        <div class="game-card">
+                            <span>${file.name}</span>
+                            <button onclick="window.open('${storage.getFileView(BUCKET_ID, file.$id)}')">Jouer</button>
+                        </div>
+                    `).join('');
+                }
+            } catch (e) {
+                list.innerText = "Erreur de connexion à Appwrite.";
+                console.error(e);
+            }
         }
-    }
-    loadGames();
-</script>
+        loadGames();
+    </script>
+</body>
+</html>
