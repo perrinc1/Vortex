@@ -11,30 +11,26 @@
         h1 { color: #e94560; font-size: 2.5em; text-shadow: 2px 2px #000; margin-bottom: 10px; }
         .upload-zone { background: #1f1f3d; padding: 25px; border-radius: 15px; margin-bottom: 30px; border: 1px dashed #444; }
         .game-card { background: #25254d; margin: 15px 0; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: 0.3s; }
-        .game-card:hover { transform: translateX(10px); background: #2d2d5f; }
         .btn { border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; color: white; text-transform: uppercase; }
         .btn-upload { background: #e94560; margin-top: 15px; width: 200px; }
         .btn-play { background: #00d4ff; box-shadow: 0 0 10px rgba(0, 212, 255, 0.4); }
         .btn-delete { background: #ff4d4d; margin-left: 10px; }
         #status { color: #00ffcc; font-weight: bold; margin-top: 15px; }
-        .no-game { color: #666; font-style: italic; margin-top: 50px; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <h1>🎮 VORTEX ARCADE</h1>
-        <p>Héberge tes créations HTML5 instantanément</p>
-        
         <div class="upload-zone">
             <input type="file" id="fileInput" accept=".zip">
             <br>
             <button class="btn btn-upload" onclick="uploadGame()">PUBLIER (ZIP)</button>
-            <p id="status">En attente d'un jeu...</p>
+            <p id="status">Prêt pour un nouveau jeu...</p>
         </div>
 
         <h2 style="text-align: left; border-bottom: 2px solid #e94560; padding-bottom: 10px;">MA BIBLIOTHÈQUE</h2>
-        <div id="gameList">Vérification des serveurs...</div>
+        <div id="gameList">Chargement...</div>
     </div>
 
     <script>
@@ -50,12 +46,11 @@
             const status = document.getElementById('status');
             if (!file) return alert("Choisis un fichier ZIP !");
             
-            status.innerText = "🚀 TRANSMISSION EN COURS...";
+            status.innerText = "🚀 ENVOI EN COURS...";
             try {
                 await storage.createFile(BUCKET_ID, Appwrite.ID.unique(), file);
-                status.innerText = "✅ REÇU ! Extraction par le robot Vortex...";
-                // On laisse 5 secondes au robot pour décompresser avant de rafraîchir
-                setTimeout(loadGames, 5000); 
+                status.innerText = "✅ REÇU ! Extraction en cours...";
+                setTimeout(loadGames, 4000); 
             } catch (e) {
                 status.innerText = "❌ ERREUR : " + e.message;
             }
@@ -66,36 +61,36 @@
             try {
                 const res = await storage.listFiles(BUCKET_ID);
                 
-                // FILTRE CRITIQUE : On ne montre que les fichiers HTML (les jeux décompressés)
-                // On cache les fichiers .zip originaux pour éviter l'écran noir
-                const playableGames = res.files.filter(f => f.name.toLowerCase().endsWith('.html'));
-                
-                if (playableGames.length === 0) {
-                    list.innerHTML = "<p class='no-game'>Aucun jeu jouable. Envoie un ZIP et attends quelques secondes.</p>";
-                } else {
-                    list.innerHTML = playableGames.map(file => `
+                if (res.files.length === 0) {
+                    list.innerHTML = "<p>Aucun fichier trouvé.</p>";
+                    return;
+                }
+
+                list.innerHTML = res.files.map(file => {
+                    const isHTML = file.name.toLowerCase().endsWith('.html');
+                    const isZIP = file.name.toLowerCase().endsWith('.zip');
+                    
+                    return `
                         <div class="game-card">
-                            <span style="font-size: 1.2em;">🕹️ <b>${file.name.replace('.html', '')}</b></span>
+                            <span style="font-size: 1.1em;">${isHTML ? '🕹️' : '📦'} <b>${file.name}</b></span>
                             <div>
-                                <button class="btn btn-play" onclick="playGame('${file.$id}')">LANCER LE JEU</button>
+                                ${isHTML ? `<button class="btn btn-play" onclick="playGame('${file.$id}')">LANCER</button>` : ''}
                                 <button class="btn btn-delete" onclick="deleteGame('${file.$id}')">SUPPRIMER</button>
                             </div>
                         </div>
-                    `).join('');
-                }
+                    `;
+                }).join('');
             } catch (e) {
-                list.innerText = "Erreur de chargement...";
+                list.innerText = "Erreur de connexion...";
             }
         }
 
         function playGame(fileId) {
-            // Cette URL pointe directement vers le fichier HTML extrait
-            const url = storage.getFileView(BUCKET_ID, fileId);
-            window.open(url, '_blank');
+            window.open(storage.getFileView(BUCKET_ID, fileId), '_blank');
         }
 
         async function deleteGame(fileId) {
-            if (!confirm("Supprimer définitivement ce jeu ?")) return;
+            if (!confirm("Supprimer ce fichier ?")) return;
             try {
                 await storage.deleteFile(BUCKET_ID, fileId);
                 loadGames();
@@ -104,10 +99,8 @@
             }
         }
 
-        // Chargement initial
         loadGames();
-        // Vérifie les nouveaux jeux toutes les 10 secondes
-        setInterval(loadGames, 10000);
+        setInterval(loadGames, 8000);
     </script>
 </body>
 </html>
